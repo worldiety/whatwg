@@ -1,6 +1,6 @@
 # whatwg
 Tracks parts of https://github.com/whatwg/ like the DOM API and provides a JSON representation to make code generation 
-easier. It includes a code generator for go and wasm/js which is located 
+easier. It includes a code generator for go and wasm/js. The generated result is located 
 at https://github.com/worldiety/dom.
 
 Please note that this project is neither developed by, nor endorsed by WHATWG (Apple, Google, Mozilla, Microsoft).
