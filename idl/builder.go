@@ -1,11 +1,14 @@
 package idl
 
 import (
+	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/worldiety/whatwg/idl/parser"
 	"github.com/worldiety/whatwg/spec"
 	"strings"
 )
+
+const debug = true
 
 type apiBuilder struct {
 	parser.BaseWebIDLListener
@@ -17,6 +20,13 @@ type apiBuilder struct {
 	field       *spec.Field     // currently on top or nil
 	function    *spec.FuncSpec  // currently on top or nil
 	functionArg *spec.Parameter // currently on top or nil
+}
+
+func dbg(str ...interface{}) {
+	if !debug {
+		return
+	}
+	fmt.Println(str...)
 }
 
 // NewAPIBuilder creates a new builder with an empty API
@@ -49,6 +59,8 @@ func Parse(str string) *spec.API {
 
 // EnterNamespace lookups or creates a namespace, adds it to the api and makes it current
 func (s *apiBuilder) EnterNamespace(name string) {
+	dbg("EnterNamespace", name)
+
 	s.path = s.path.Child(name)
 	ns := s.spec.Root.LookupNamespace(s.path)
 	if ns == nil {
@@ -60,6 +72,8 @@ func (s *apiBuilder) EnterNamespace(name string) {
 
 // ExitNamespace leaves the current namespace and makes the parent
 func (s *apiBuilder) ExitNamespace(name string) {
+	dbg("ExitNamespace", name)
+
 	if s.path.Name() != name {
 		panic("expected " + name + " but got " + s.path.Name())
 	}
@@ -67,6 +81,8 @@ func (s *apiBuilder) ExitNamespace(name string) {
 }
 
 func (s *apiBuilder) EnterDictionary(c *parser.DictionaryContext) {
+	dbg("EnterDictionary", c.GetText())
+
 	s.typeDef = &spec.Type{}
 	s.typeDef.Name = c.IDENTIFIER_WEBIDL().GetText()
 	s.typeDef.Stereotype = spec.Dictionary
@@ -75,6 +91,8 @@ func (s *apiBuilder) EnterDictionary(c *parser.DictionaryContext) {
 }
 
 func (s *apiBuilder) EnterDictionaryMember(ctx *parser.DictionaryMemberContext) {
+	dbg("EnterDictionaryMember", ctx.GetText())
+
 	s.field = &spec.Field{}
 	s.field.Name = ctx.IDENTIFIER_WEBIDL().GetText()
 	s.field.TypeRef = &spec.TypeRef{
@@ -86,17 +104,28 @@ func (s *apiBuilder) EnterDictionaryMember(ctx *parser.DictionaryMemberContext) 
 }
 
 func (s *apiBuilder) ExitDictionaryMember(ctx *parser.DictionaryMemberContext) {
+	dbg("ExitDictionaryMember", ctx.GetText())
+
 	s.field = nil
 }
 
+func returnTypeText(ctx parser.IReturnTypeContext) string {
+	if ctx == nil {
+		return ""
+	}
+	return ctx.GetText()
+}
+
 func (s *apiBuilder) EnterOperation(ctx *parser.OperationContext) {
+	dbg("EnterOperation", ctx.GetText())
+
 	s.function = &spec.FuncSpec{}
 	s.function.AddReturn(&spec.Parameter{
 		Description: "",
 		Name:        "",
-		TypeRef:     spec.NewTypeRef(ctx.ReturnType().GetText()),
+		TypeRef:     spec.NewTypeRef(returnTypeText(ctx.ReturnType())),
 	})
-	if ctx.ReturnType().GetText() == "constructor" {
+	if returnTypeText(ctx.ReturnType()) == "constructor" {
 		s.typeDef.AddConstructor(s.function)
 	} else {
 		s.typeDef.AddFuncSpec(s.function)
@@ -104,10 +133,14 @@ func (s *apiBuilder) EnterOperation(ctx *parser.OperationContext) {
 }
 
 func (s *apiBuilder) EnterOperationRest(c *parser.OperationRestContext) {
+	dbg("EnterOperationRest", c.GetText())
+
 	s.function.Name = c.OptionalIdentifier().GetText()
 }
 
 func (s *apiBuilder) EnterOptionalOrRequiredArgument(c *parser.OptionalOrRequiredArgumentContext) {
+
+	dbg("EnterOptionalOrRequiredArgument", c.GetText())
 
 	s.functionArg = &spec.Parameter{
 		Description: "",
@@ -121,7 +154,19 @@ func (s *apiBuilder) EnterOptionalOrRequiredArgument(c *parser.OptionalOrRequire
 	s.function.AddArgument(s.functionArg)
 }
 
+func (s *apiBuilder) EnterPartialInterface(ctx *parser.PartialInterfaceContext) {
+	dbg("EnterPartialInterface", ctx.GetText())
+
+	s.typeDef = &spec.Type{}
+	s.typeDef.Name = ctx.IDENTIFIER_WEBIDL().GetText()
+	s.typeDef.Stereotype = spec.Interface
+
+	s.namespace.AddType(s.typeDef)
+}
+
 func (s *apiBuilder) EnterInterface_(ctx *parser.Interface_Context) {
+	dbg("EnterInterface_", ctx.GetText())
+
 	s.typeDef = &spec.Type{}
 	s.typeDef.Name = ctx.IDENTIFIER_WEBIDL().GetText()
 	s.typeDef.Stereotype = spec.Interface
@@ -141,25 +186,45 @@ func (s *apiBuilder) EnterReadWriteAttribute(ctx *parser.ReadWriteAttributeConte
 }
 
 func (s *apiBuilder) EnterReadonlyMember(c *parser.ReadonlyMemberContext) {
+	dbg("EnterReadonlyMember", c.GetText())
+
 	s.attr = &spec.Attribute{}
 	s.attr.Read = true
 	s.attr.Write = false
 	s.typeDef.AddAttribute(s.attr)
 }
+
+func (s *apiBuilder) EnterStringifier(ctx *parser.StringifierContext) {
+	dbg("EnterStringifier", ctx.GetText())
+
+	s.attr = &spec.Attribute{}
+	s.attr.Read = true
+	s.attr.Write = false
+	s.typeDef.AddAttribute(s.attr)
+}
+
 func (s *apiBuilder) ExitReadOnly(c *parser.ReadOnlyContext) {
-	s.attr = nil
+	dbg("ExitReadOnly", c.GetText())
+
+	//s.attr = nil
 }
 
 func (s *apiBuilder) ExitReadWriteAttribute(c *parser.ReadWriteAttributeContext) {
-	s.attr = nil
+	dbg("ExitReadWriteAttribute", c.GetText())
+
+	//s.attr = nil
 }
 
 func (s *apiBuilder) EnterAttributeName(c *parser.AttributeNameContext) {
+	dbg("EnterAttributeName", c.GetText())
+
 	s.attr.Name = c.GetText()
 
 }
 
 func (s *apiBuilder) EnterSingleType(ctx *parser.SingleTypeContext) {
+	dbg("EnterSingleType", ctx.GetText())
+
 	if s.attr != nil {
 		optional := false
 		typeName := ctx.GetText()

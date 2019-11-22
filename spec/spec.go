@@ -10,6 +10,11 @@ type API struct {
 	Root *Namespace // the contained root namespaces. The root namespace has always an empty/ignored name
 }
 
+// Merge takes the other api and inserts it into this api
+func (a *API) Merge(other *API) {
+	a.Root.Merge(other.Root)
+}
+
 // ToJson serializes into json
 func (a *API) ToJson() string {
 	b, err := json.Marshal(a)
@@ -68,6 +73,21 @@ type Namespace struct {
 	Namespaces []*Namespace `json:",omitempty"` // Root namespaces
 }
 
+// Merge takes the other namespace and appends everything into this space
+func (n *Namespace) Merge(other *Namespace) {
+	for _, t := range other.Types {
+		n.AddType(t)
+	}
+	for _, otherChild := range other.Namespaces {
+		child := n.Namespace(otherChild.Name)
+		if child != nil {
+			child.Merge(otherChild)
+		} else {
+			n.Namespaces = append(n.Namespaces, otherChild)
+		}
+	}
+}
+
 // AddNamespace appends another namespace
 func (n *Namespace) AddNamespace(ns *Namespace) {
 	n.Namespaces = append(n.Namespaces, ns)
@@ -76,6 +96,16 @@ func (n *Namespace) AddNamespace(ns *Namespace) {
 // AddType appends another types
 func (n *Namespace) AddType(ns *Type) {
 	n.Types = append(n.Types, ns)
+}
+
+// Namespace returns the child namespace or nil
+func (n *Namespace) Namespace(name string) *Namespace {
+	for _, c := range n.Namespaces {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }
 
 // LookupNamespace returns the denoted namespace or nil. The empty path returns this namespace
@@ -146,6 +176,7 @@ type Attribute struct {
 	Read        bool     // Read flag indicates a read access to the attribute
 	Write       bool     // Write flag indicates a write access to the attribute
 	Deprecated  bool     `json:",omitempty"` // Deprecated indicates a historical or deprecated attribute which should not be used anymore
+	Gen         *Gen
 }
 
 // A field describes a member of a struct or map like data structure
@@ -154,6 +185,7 @@ type Field struct {
 	Name        string   // Qualifier of the attribute
 	TypeRef     *TypeRef // TypeRef refers to the actual type
 	Deprecated  bool     `json:",omitempty"` // Deprecated indicates a historical or deprecated attribute which should not be used anymore
+	Gen         *Gen
 }
 
 // A Parameter describes a FuncSpec variable
@@ -161,6 +193,7 @@ type Parameter struct {
 	Description string   `json:",omitempty"` // Description contains details about the Type itself
 	Name        string   // Qualifier of the parameter
 	TypeRef     *TypeRef // TypeRef refers to the actual type
+	Gen         *Gen
 }
 
 // A FuncSpec describes a function or method
@@ -169,6 +202,7 @@ type FuncSpec struct {
 	Name        string       // Name of the function
 	Arguments   []*Parameter // Arguments of the function
 	Returns     []*Parameter // Returns contains the result parameters
+	Gen         *Gen
 }
 
 // AddReturns appends another parameter as a return parameter
@@ -190,7 +224,7 @@ type Type struct {
 	Fields       []*Field     `json:",omitempty"` // Fields contains all defined fields or members for this type
 	Constructors []*FuncSpec  `json:",omitempty"` // Constructors contains all defined function signatures
 	FuncSpecs    []*FuncSpec  `json:",omitempty"` // FuncSpecs contains all defined function signatures
-
+	Gen          *Gen
 }
 
 // AddAttribute appends another attribute
@@ -211,4 +245,9 @@ func (t *Type) AddFuncSpec(f *FuncSpec) {
 // AddConstructor appends another constructor
 func (t *Type) AddConstructor(f *FuncSpec) {
 	t.Constructors = append(t.Constructors, f)
+}
+
+// Gen contains generator information
+type Gen struct {
+	Name string // Alternate Name
 }

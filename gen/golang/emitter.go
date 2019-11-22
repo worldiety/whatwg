@@ -112,7 +112,9 @@ func (a *Appender) NewLine() {
 func (a *Appender) String() string {
 	res, err := format.Source([]byte(a.sb.String()))
 	if err != nil {
+		fmt.Println(err)
 		return a.sb.String()
 	}
+
 	return string(res)
 }

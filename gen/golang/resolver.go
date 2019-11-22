@@ -24,25 +24,38 @@ func (r *Resolver) Resolve(moduleName string) error {
 
 func (r *Resolver) mapBuildInTypes(ns *spec.Namespace) {
 	for _, typeDef := range ns.Types {
+		typeDef.Gen = &spec.Gen{}
+		typeDef.Gen.Name = r.mapInvalidIdentifier(typeDef.Name)
 		for _, attr := range typeDef.Attributes {
 			r.mapBuildInType(attr.TypeRef)
-			attr.Name = r.mapInvalidIdentifier(attr.Name)
+			attr.Gen = &spec.Gen{}
+			attr.Gen.Name = r.mapInvalidIdentifier(attr.Name)
 		}
 		for _, field := range typeDef.Fields {
+			field.Gen = &spec.Gen{}
+			field.Gen.Name = r.mapInvalidIdentifier(field.Name)
 			r.mapBuildInType(field.TypeRef)
 		}
 
 		for _, fun := range typeDef.FuncSpecs {
-			fun.Name = r.mapInvalidIdentifier(fun.Name)
+			fun.Gen = &spec.Gen{}
+			fun.Gen.Name = r.mapInvalidIdentifier(fun.Name)
 			for _, arg := range fun.Arguments {
+				arg.Gen = &spec.Gen{}
+				arg.Gen.Name = r.mapInvalidIdentifier(arg.Name)
+
 				r.mapBuildInType(arg.TypeRef)
 				arg.Name = r.mapInvalidIdentifier(arg.Name)
 			}
 		}
 
 		for _, con := range typeDef.Constructors {
-			con.Name = r.mapInvalidIdentifier(con.Name)
+			con.Gen = &spec.Gen{}
+			con.Gen.Name = r.mapInvalidIdentifier(con.Name)
 			for _, arg := range con.Arguments {
+				arg.Gen = &spec.Gen{}
+				arg.Gen.Name = r.mapInvalidIdentifier(arg.Name)
+
 				r.mapBuildInType(arg.TypeRef)
 				arg.Name = r.mapInvalidIdentifier(arg.Name)
 			}
@@ -55,6 +68,8 @@ func (r *Resolver) mapBuildInTypes(ns *spec.Namespace) {
 
 func (r *Resolver) mapBuildInType(t *spec.TypeRef) {
 	switch t.Qualifier.Name() {
+	case "USVString":
+		fallthrough
 	case "DOMString":
 		t.Qualifier = spec.NewQualifier("string")
 	case "void":
@@ -65,6 +80,12 @@ func (r *Resolver) mapBuildInType(t *spec.TypeRef) {
 		t.Qualifier = spec.NewQualifier("bool")
 	case "unsignedshort":
 		t.Qualifier = spec.NewQualifier("uint16")
+	case "long":
+		t.Qualifier = spec.NewQualifier("int64")
+	case "double":
+		t.Qualifier = spec.NewQualifier("float64")
+	case "unsignedlong":
+		t.Qualifier = spec.NewQualifier("uint64")
 	}
 	for _, g := range t.Generics {
 		r.mapBuildInType(g)

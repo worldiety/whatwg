@@ -61,3 +61,42 @@ func TestBuilder(t *testing.T) {
 		t.Fatalf("expected %d but got %d", 3, len(spec.Root.Types[1].Fields))
 	}
 }
+
+const idl1 = `
+enum DocumentReadyState { "loading", "interactive", "complete" };
+typedef (HTMLScriptElement or SVGScriptElement) HTMLOrSVGScriptElement;
+
+[OverrideBuiltins]
+partial interface Document {
+  // resource metadata management
+  [PutForwards=href, Unforgeable] readonly attribute Location? location;
+  attribute USVString domain;
+}
+`
+
+func TestBuilder1(t *testing.T) {
+	spec := Parse(idl1)
+	fmt.Println(spec.String())
+}
+
+
+const idl2=`
+interface mixin HTMLHyperlinkElementUtils {
+  [CEReactions] stringifier attribute USVString href;
+  readonly attribute USVString origin;
+  [CEReactions] attribute USVString protocol;
+  [CEReactions] attribute USVString username;
+  [CEReactions] attribute USVString password;
+  [CEReactions] attribute USVString host;
+  [CEReactions] attribute USVString hostname;
+  [CEReactions] attribute USVString port;
+  [CEReactions] attribute USVString pathname;
+  [CEReactions] attribute USVString search;
+  [CEReactions] attribute USVString hash;
+};
+`
+
+func TestBuilder2(t *testing.T) {
+	spec := Parse(idl2)
+	fmt.Println(spec.String())
+}
